@@ -1,0 +1,25 @@
+name: Production Build
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-generator:
+    uses: TangerieOrg/Workflows/.github/workflows/docker-build-push.yml@main
+    with:
+      image_name: nginx-manager-generator
+      registry_name: docker.tangerie.xyz
+      ref: main
+      path: generator
+    secrets: inherit
+
+  deploy:
+    uses: TangerieOrg/Workflows/.github/workflows/docker-deploy.yml@main
+    needs: 
+      - build-generator
+    with:
+      image_name: nginx-manager
+      registry_name: docker.tangerie.xyz
+    secrets: inherit

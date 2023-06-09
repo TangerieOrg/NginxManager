@@ -1,0 +1,4 @@
+SHELL=/bin/bash
+
+* * * * * /bin/bash -l -c 'cd /app && ./node_modules/.bin/ts-node -r tsconfig-paths/register ./src/index.ts >> /var/log/app.log'
+

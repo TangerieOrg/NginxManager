@@ -1,0 +1,25 @@
+version: '3'
+services:
+  generator:
+    image: ${IMAGE_NAME}-generator:latest
+    deploy:
+      replicas: 1
+    volumes:
+      - ./outputs:/app/outputs
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  nginx:
+    ports:
+      - 81:80
+    image: ${IMAGE_NAME}-nginx:latest
+    deploy:
+      replicas: 1
+    networks:
+      - nginx-proxy-overlay
+    volumes:
+      - ./outputs:/etc/nginx/locations
+
+networks:
+  nginx-proxy-overlay:
+    external: true
+    driver: overlay
