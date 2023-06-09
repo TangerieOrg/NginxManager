@@ -15,10 +15,20 @@ jobs:
       path: generator
     secrets: inherit
 
+  build-nginx:
+      uses: TangerieOrg/Workflows/.github/workflows/docker-build-push.yml@main
+      with:
+        image_name: nginx-manager-nginx
+        registry_name: docker.tangerie.xyz
+        ref: main
+        path: nginx
+      secrets: inherit
+
   deploy:
     uses: TangerieOrg/Workflows/.github/workflows/docker-deploy.yml@main
     needs: 
       - build-generator
+      - build-nginx
     with:
       image_name: nginx-manager
       registry_name: docker.tangerie.xyz
