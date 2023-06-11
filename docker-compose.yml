@@ -2,6 +2,8 @@ version: '3'
 services:
   generator:
     image: ${IMAGE_NAME}-generator:latest
+    networks:
+      - default
     deploy:
       replicas: 1
     volumes:
@@ -24,5 +26,5 @@ volumes:
 
 networks:
   nginx-proxy-overlay:
-    external: true
     driver: overlay
+    external: true

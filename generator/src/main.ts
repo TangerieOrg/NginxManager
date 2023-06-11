@@ -1,6 +1,7 @@
 import Docker from "dockerode";
 import path from "path";
 import fs from "fs";
+import { ServiceConfig } from "types";
 
 const NETWORK_NAME = "nginx-proxy-overlay";
 const OUTPUT_PATH = path.join(__dirname, "..", "outputs", "generated.conf");
@@ -41,18 +42,49 @@ async function getServices(client : Docker, networkId : string) {
 
 }
 
-const createConfigFromService = (service : Docker.Service) => {
+const getServiceConfig = (service : Docker.Service) : ServiceConfig => {
     const hostname = service.Spec!.Name!;
     let path = service.Spec!.Labels!["xyz.tangerie.reverse_proxy.path"];
     if(path === '/') path = '';
-    
     const port = service.Spec!.Labels!["xyz.tangerie.reverse_proxy.port"];
+    const server_name = service.Spec!.Labels!["xyz.tangerie.reverse_proxy.server_name"] ?? "";
 
+    return {
+        hostname,
+        path,
+        port,
+        server_name
+    }
+}
+
+const getConfigsByServerName = (services : Docker.Service[]) => {
+    const servers : Record<string, ServiceConfig[]> = {};
+
+    for(const service of services) {
+        const cfg = getServiceConfig(service);
+        if(!servers[cfg.server_name]) servers[cfg.server_name] = [cfg];
+        else servers[cfg.server_name].push(cfg)
+    }
+
+    return servers;
+}
+
+const createLocation = ({ hostname, path, port } : ServiceConfig) => {
     const prefix = path === "" ? "" : "^~";
 
     return `location ${prefix} ${path}/ {
-    include /etc/nginx/snippets/proxy_header.conf;
-    proxy_pass http://${hostname}:${port}/;
+        include /etc/nginx/snippets/proxy_header.conf;
+        proxy_pass http://${hostname}:${port}/;
+    }
+`;
+}
+
+const createServer = (name : string, cfgs : ServiceConfig[]) => {
+    return `server {
+    include /etc/nginx/snippets/server_base.conf;
+    ${name.length === 0 ? "" : `server_name ${name};`}
+
+    ${cfgs.map(createLocation).join("\n")}
 }
 `;
 }
@@ -73,8 +105,21 @@ export const run = async (client : Docker) => {
         return;
     }
     const services = await getServices(client, networkId);
-    const config = services.map(createConfigFromService).join("\n");
     
+    const servers = getConfigsByServerName(services);
+
+    let config = "";
+
+    // Do default server first
+    if(servers[""]) {
+        config += createServer("", servers[""]);
+        delete servers[""];
+    }
+
+    for(const server_name in servers) {
+        config += createServer(server_name, servers[server_name]);
+    }
+
     if(doUpdate(config)) {
         console.log("Docker Update Detected");
         console.log(config);
