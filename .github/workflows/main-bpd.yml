@@ -13,7 +13,7 @@ jobs:
       registry_name: docker.tangerie.xyz
       ref: main
       path: generator
-      force_build: 'true'
+      # force_build: 'true'
     secrets: inherit
 
   build-nginx:
@@ -23,7 +23,7 @@ jobs:
         registry_name: docker.tangerie.xyz
         ref: main
         path: nginx
-        force_build: 'true'
+        # force_build: 'true'
       secrets: inherit
 
   deploy:
