@@ -9,19 +9,21 @@ jobs:
   build-generator:
     uses: TangerieOrg/Workflows/.github/workflows/docker-build-push.yml@main
     with:
-      image_name: nginx-manager-generator
+      image_name: nginx-manager/generator
       registry_name: docker.tangerie.xyz
       ref: main
       path: generator
+      force_build: 'true'
     secrets: inherit
 
   build-nginx:
       uses: TangerieOrg/Workflows/.github/workflows/docker-build-push.yml@main
       with:
-        image_name: nginx-manager-nginx
+        image_name: nginx-manager/nginx
         registry_name: docker.tangerie.xyz
         ref: main
         path: nginx
+        force_build: 'true'
       secrets: inherit
 
   deploy:
