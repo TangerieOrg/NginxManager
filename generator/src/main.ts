@@ -48,12 +48,14 @@ const getServiceConfig = (service : Docker.Service) : ServiceConfig => {
     if(path === '/') path = '';
     const port = service.Spec!.Labels!["xyz.tangerie.reverse_proxy.port"];
     const server_name = service.Spec!.Labels!["xyz.tangerie.reverse_proxy.server_name"] ?? "";
+    const no_trailing_slash = (service.Spec!.Labels!["xyz.tangerie.reverse_proxy.no_trailing_slash"] ?? "") == "true";
 
     return {
         hostname,
         path,
         port,
-        server_name
+        server_name,
+        no_trailing_slash
     }
 }
 
@@ -69,12 +71,12 @@ const getConfigsByServerName = (services : Docker.Service[]) => {
     return servers;
 }
 
-const createLocation = ({ hostname, path, port } : ServiceConfig) => {
+const createLocation = ({ hostname, path, port, no_trailing_slash } : ServiceConfig) => {
     const prefix = path === "" ? "" : "^~";
 
     return `location ${prefix} ${path}/ {
         include /etc/nginx/snippets/proxy_header.conf;
-        proxy_pass http://${hostname}:${port}/;
+        proxy_pass http://${hostname}:${port}${no_trailing_slash ? "" : "/"};
     }
 `;
 }
