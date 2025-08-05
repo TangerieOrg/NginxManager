@@ -32,13 +32,29 @@ const doesServiceHaveKeys = (service : Docker.Service) => {
 }
 
 async function getServices(client : Docker, networkId : string) {
-    return (await client.listServices())
+    return (await client.listServices().catch(() => []))
         .filter(service => {
             if(!isServiceOnNetwork(service, networkId)) return false;
             return doesServiceHaveKeys(service);
         })
         // Sort for stability in results
         .sort((a, b) => (a.Spec!.Name! > b.Spec!.Name!) ? 1 : -1)
+}
+
+const doesContainerHaveKeys = (service : Docker.ContainerInfo) => {
+    if(!service.Labels) return false;
+    for(const key of ConfigKeys) if(!service.Labels[key]) return false;
+    if(service.Names.length == 0) return false;
+    return true;
+}
+
+async function getContainers(client : Docker, networkId : string) {
+    return (await client.listContainers({ network: networkId }).catch(() => []))
+        .filter(contaienr => {
+            return doesContainerHaveKeys(contaienr);
+        })
+        // Sort for stability in results
+        .sort((a, b) => (a.Names[0] > b.Names[0]) ? 1 : -1)
 
 }
 
@@ -59,11 +75,33 @@ const getServiceConfig = (service : Docker.Service) : ServiceConfig => {
     }
 }
 
-const getConfigsByServerName = (services : Docker.Service[]) => {
+const getContainerConfig = (container : Docker.ContainerInfo) : ServiceConfig => {
+    const hostname = container.Names.at(0)!.replace("/", "");
+    let path = container.Labels!["xyz.tangerie.reverse_proxy.path"];
+    if(path === '/') path = '';
+    const port = container.Labels!["xyz.tangerie.reverse_proxy.port"];
+    const server_name = container.Labels!["xyz.tangerie.reverse_proxy.server_name"] ?? "";
+    const no_trailing_slash = (container.Labels!["xyz.tangerie.reverse_proxy.no_trailing_slash"] ?? "") == "true";
+
+    return {
+        hostname,
+        path,
+        port,
+        server_name,
+        no_trailing_slash
+    }
+}
+
+const getConfigsByServerName = (services : Docker.Service[], containers : Docker.ContainerInfo[]) => {
     const servers : Record<string, ServiceConfig[]> = {};
 
     for(const service of services) {
         const cfg = getServiceConfig(service);
+        if(!servers[cfg.server_name]) servers[cfg.server_name] = [cfg];
+        else servers[cfg.server_name].push(cfg)
+    }
+    for(const container of containers) {
+        const cfg = getContainerConfig(container);
         if(!servers[cfg.server_name]) servers[cfg.server_name] = [cfg];
         else servers[cfg.server_name].push(cfg)
     }
@@ -107,8 +145,8 @@ export const run = async (client : Docker) => {
         return;
     }
     const services = await getServices(client, networkId);
-    
-    const servers = getConfigsByServerName(services);
+    const containers = await getContainers(client, networkId);
+    const servers = getConfigsByServerName(services, containers);
 
     let config = "";
 

@@ -1,0 +1,15 @@
+services:
+  example-nginx:
+    image: nginx:alpine
+    container_name: nginx_conainer
+    networks:
+      - nginx-proxy-overlay
+    ports:
+      - 8080:80
+    labels:
+      xyz.tangerie.reverse_proxy.path: "/codex"
+      xyz.tangerie.reverse_proxy.port: "8080"
+
+networks:
+  nginx-proxy-overlay:
+    external: true
