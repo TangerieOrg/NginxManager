@@ -1,6 +1,6 @@
 version: '3'
 services:
-  generator:
+  generator: 
     image: ${IMAGE_NAME}/generator:latest
     networks:
       - default
