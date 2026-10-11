@@ -1,7 +1,7 @@
 import Docker from "dockerode";
-import { run } from "main";
+import { watch } from "./main";
 
 const client = new Docker();
 
-run(client);
+watch(client);
 

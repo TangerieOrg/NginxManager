@@ -1,11 +1,13 @@
-version: '3'
 services:
-  generator: 
+  generator:
     image: ${IMAGE_NAME}/generator:latest
     networks:
       - default
     deploy:
       replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
     volumes:
       - outputs:/app/outputs
       - /var/run/docker.sock:/var/run/docker.sock
@@ -14,8 +16,14 @@ services:
     ports:
       - 81:80
     image: ${IMAGE_NAME}/nginx:latest
+    labels:
+      xyz.tangerie.nginx_manager.role: nginx
+    stop_grace_period: 30s
     deploy:
       replicas: 1
+      # Ingress only routes to healthy tasks, start the new one before stopping the old
+      update_config:
+        order: start-first
     networks:
       - nginx-proxy-overlay
     volumes:

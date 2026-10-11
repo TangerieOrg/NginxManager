@@ -1,23 +1,26 @@
-FROM node:18.3.0
-
-CMD []
-
-RUN apt-get update && apt-get install -y cron
+FROM node:22-alpine AS build
 
 WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm i
+RUN npm ci
 
 COPY . .
 
-RUN crontab crontab
+RUN npx tsc
 
-RUN env >> /etc/environment
 
-RUN touch /var/log/app.log
+FROM node:22-alpine
 
-COPY ./entrypoint.sh /entrypoint.sh
+WORKDIR /app
 
-ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]
+COPY package*.json ./
+
+RUN npm ci --omit=dev
+
+COPY --from=build /app/dist ./dist
+
+RUN mkdir -p outputs
+
+CMD ["node", "dist/index.js"]

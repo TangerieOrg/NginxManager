@@ -2,14 +2,19 @@
 
 Auto-generate nginx reverse proxy configs based on labels on docker services.
 
-Managed by the label `xyz.tangerie.reverse_proxy`
+Managed by the label `xyz.tangerie.reverse_proxy`, services need to be on `nginx-proxy-overlay`. The generator watches docker events and reloads nginx when the config changes.
+
+| Label | |
+|---|---|
+| `xyz.tangerie.reverse_proxy.path` | required |
+| `xyz.tangerie.reverse_proxy.port` | required |
+| `xyz.tangerie.reverse_proxy.server_name` | optional, otherwise default server |
+| `xyz.tangerie.reverse_proxy.no_trailing_slash` | `"true"` to keep the path prefix |
 
 E.g in a stack called `everything-codex`
 
 ```yml
 nginx:
-    ports:
-        - 80:80
     image: nginx:alpine
     deploy:
         replicas: 1
@@ -21,14 +26,12 @@ nginx:
 ```
 
 ```nginx
-location ^~ /codex/ { 
-    client_max_body_size 0;
-    proxy_set_header Host $http_host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_pass http://everything-codex_nginx:80/;    
+location ^~ /codex/ {
+    include /etc/nginx/snippets/proxy_header.conf;
+    set $upstream everything-codex_nginx:80;
+    rewrite "^/codex(/.*)$" $1 break;
+    proxy_pass http://$upstream;
 }
-
 ```
 
 https://github.com/nginx-proxy/nginx-proxy
